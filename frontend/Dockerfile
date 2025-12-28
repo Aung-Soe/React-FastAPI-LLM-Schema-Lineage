@@ -1,4 +1,4 @@
-# ---------- Stage 1: Build ----------
+# ---------- Build stage ----------
 FROM node:18-alpine AS build
 
 WORKDIR /app
@@ -8,18 +8,17 @@ RUN npm install
 
 COPY . .
 RUN npm run build
-# Vite outputs to /app/dist
 
-# ---------- Stage 2: Serve ----------
-FROM nginx:stable-alpine
+# ---------- Runtime stage ----------
+FROM nginx:alpine
 
-# Remove default nginx config
+# Remove default config
 RUN rm /etc/nginx/conf.d/default.conf
 
-# Copy our custom nginx config
+# Custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy Vite build output
+# Copy built assets
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 3000
