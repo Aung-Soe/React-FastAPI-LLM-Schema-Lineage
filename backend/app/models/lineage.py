@@ -1,6 +1,7 @@
+# app/models/lineage.py
 from dataclasses import dataclass
-from typing import Optional, Dict
-from uuid import UUID, uuid4
+from typing import Optional, Dict, List, Tuple
+
 
 @dataclass(frozen=True)
 class LineageNode:
@@ -8,17 +9,23 @@ class LineageNode:
     type: str  # table | view | column
     metadata: Optional[Dict] = None
 
+
 @dataclass(frozen=True)
 class LineageEdge:
     source: LineageNode
     target: LineageNode
     relation: str  # depends_on | derives_from
+    metadata: Optional[Dict] = None
 
-@dataclass(frozen=True)
+
 class LineageGraph:
+    """
+    In-memory lineage graph used during a scan.
+    """
+
     def __init__(self):
-        self.nodes: dict[tuple[str, str], LineageNode] = {}
-        self.edges: list[LineageEdge] = []
+        self.nodes: dict[Tuple[str, str], LineageNode] = {}
+        self.edges: List[LineageEdge] = []
 
     def get_or_add_node(self, node: LineageNode) -> LineageNode:
         key = (node.name, node.type)
@@ -31,6 +38,6 @@ class LineageGraph:
 
     def to_dict(self):
         return {
-            "nodes": list(self.nodes.values()),
-            "edges": self.edges,
+            "nodes": [n.__dict__ for n in self.nodes.values()],
+            "edges": [e.__dict__ for e in self.edges],
         }

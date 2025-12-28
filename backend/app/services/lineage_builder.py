@@ -2,7 +2,7 @@ from typing import List, Dict, Set
 import sqlglot
 from sqlglot.expressions import Column, Table
 
-from app.domain.lineage import LineageNode, LineageEdge
+from app.models.lineage import LineageNode, LineageEdge
 
 
 class LineageBuilder:

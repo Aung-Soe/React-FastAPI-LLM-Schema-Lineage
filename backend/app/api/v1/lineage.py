@@ -1,17 +1,29 @@
 # app/api/v1/lineage.py
 # app/api/v1/lineage.py
+from app.infrastructure.lineage_repository import LineageRepository
 from fastapi import APIRouter, HTTPException, Depends
 
 from app.infrastructure.db_introspection import PostgresIntrospector
 from app.services.lineage_builder import LineageBuilder
+from app.infrastructure.db import get_engine
 from app.core.config import settings
+from app.services.lineage_read_service import LineageReadService
 
 router = APIRouter(prefix="/lineage", tags=["lineage"])
+
+def get_lineage_repo():
+    return LineageRepository()
 
 
 def get_introspector():
     return PostgresIntrospector()
 
+@router.get("/latest")
+def get_latest_lineage(
+    repo: LineageRepository = Depends(get_lineage_repo),
+):
+    service = LineageReadService(repo)
+    return service.get_latest_lineage()
 
 @router.get("/{view_name}")
 def get_lineage(

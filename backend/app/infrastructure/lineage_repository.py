@@ -1,15 +1,60 @@
 # app/infrastructure/lineage_repository.py
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from uuid import uuid4, UUID
 from datetime import datetime
 from sqlalchemy import text, Engine
 from app.infrastructure.db import get_engine
-from app.domain.lineage import LineageNode, LineageEdge
+from app.models.lineage import LineageNode, LineageEdge
 
 
 class LineageRepository:
     def __init__(self, engine: Engine | None = None):
         self.engine = engine or get_engine()
+    
+    #-------------------------
+    # Scan End Points
+    #-------------------------
+    def get_latest_completed_scan_id(self) -> Optional[UUID]:
+        sql = """
+        SELECT id
+        FROM schema_scans
+        WHERE status = 'completed'
+        ORDER BY completed_at DESC
+        LIMIT 1
+        """
+        with self.engine.connect() as conn:
+            row = conn.execute(text(sql)).fetchone()
+            return row[0] if row else None
+
+    def get_nodes_for_scan(self, scan_id: UUID) -> List[Dict]:
+        sql = """
+        SELECT id, name, type, metadata
+        FROM lineage_nodes
+        WHERE scan_id = :scan_id
+        """
+        with self.engine.connect() as conn:
+            result = conn.execute(text(sql), {"scan_id": scan_id})
+            return [dict(row) for row in result.mappings()]
+
+    def get_edges_for_scan(self, scan_id: UUID) -> List[Dict]:
+        sql = """
+        SELECT
+            e.id,
+            e.relation,
+            s.id AS source_id,
+            s.name AS source_name,
+            s.type AS source_type,
+            t.id AS target_id,
+            t.name AS target_name,
+            t.type AS target_type
+        FROM lineage_edges e
+        JOIN lineage_nodes s ON e.source_node_id = s.id
+        JOIN lineage_nodes t ON e.target_node_id = t.id
+        WHERE e.scan_id = :scan_id
+        """
+        with self.engine.connect() as conn:
+            result = conn.execute(text(sql), {"scan_id": scan_id})
+            return [dict(row) for row in result.mappings()]
 
     # -------------------------
     # Schema scan lifecycle

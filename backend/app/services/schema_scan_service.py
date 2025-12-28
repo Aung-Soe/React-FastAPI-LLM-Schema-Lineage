@@ -2,7 +2,8 @@ from typing import Dict, List
 from app.infrastructure.db_introspection import PostgresIntrospector
 from app.infrastructure.lineage_repository import LineageRepository
 from app.services.lineage_builder import LineageBuilder
-from app.domain.lineage import LineageNode, LineageEdge
+from app.models.lineage import LineageNode, LineageEdge
+from datetime import datetime
 
 
 class SchemaScanService:
@@ -21,6 +22,7 @@ class SchemaScanService:
     def scan(self) -> Dict:
         # to add scan id generation
         scan_id = self.lineage_repo.create_scan()
+        started_at = datetime.utcnow()
         tables = self.introspector.list_tables()
         views = self.introspector.list_views()
 
@@ -56,7 +58,20 @@ class SchemaScanService:
         node_id_map = self.lineage_repo.save_nodes(scan_id, list(all_nodes.values()))
         self.lineage_repo.save_edges(scan_id, all_edges, node_id_map)
 
+        self.lineage_repo.complete_scan(
+            scan_id=scan_id,
+            object_count=len(all_nodes),
+        )
+
+        completed_at = datetime.utcnow()
+
         return {
-            "nodes": [n.__dict__ for n in all_nodes.values()],
-            "edges": [e.__dict__ for e in all_edges],
+            "scan_id": str(scan_id),
+            "status": "completed",
+            "tables_count": len(tables),
+            "views_count": len(views),
+            "nodes_count": len(all_nodes),
+            "edges_count": len(all_edges),
+            "started_at": started_at.isoformat(),
+            "completed_at": completed_at.isoformat(),
         }
