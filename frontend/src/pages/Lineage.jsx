@@ -1,27 +1,38 @@
 import { useEffect, useState } from "react";
 import LineageGraph from "../components/Graph/LineageGraph";
+import ColumnPanel from "../components/Layout/ColumnPanel";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function Lineage() {
   const [lineage, setLineage] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [selectedNode, setSelectedNode] = useState(null);
 
   useEffect(() => {
     fetch(`${API_URL}/api/v1/lineage/latest`)
       .then(res => res.json())
-      .then(data => {
-        console.log("LINEAGE FROM BACKEND:", data);
-        setLineage(data);
-      })
-      .catch(err => {
-        console.error("FAILED TO FETCH LINEAGE", err);
-      })
-      .finally(() => setLoading(false));
+      .then(setLineage)
+      .catch(console.error);
   }, []);
 
-  if (loading) return <div>Loading lineage...</div>;
-  if (!lineage) return <div>No lineage data</div>;
+  if (!lineage) return <div>Loading lineage...</div>;
 
-  return <LineageGraph lineage={lineage} />;
+  return (
+    <div style={{ display: "flex", height: "100vh" }}>
+      {/* Graph area */}
+      <div style={{ flex: 1 }}>
+        <LineageGraph
+          lineage={lineage}
+          selectedNode={selectedNode}
+          onNodeSelect={setSelectedNode}
+        />
+      </div>
+
+      {/* Right side column panel */}
+      <ColumnPanel
+        lineage={lineage}
+        selectedNode={selectedNode}
+      />
+    </div>
+  );
 }

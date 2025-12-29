@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy import text, Engine
 from app.infrastructure.db import get_engine
 from app.models.lineage import LineageNode, LineageEdge
+import json
 
 
 class LineageRepository:
@@ -133,7 +134,7 @@ class LineageRepository:
                         "scan_id": scan_id,
                         "name": node.name,
                         "type": node.type,
-                        "metadata": node.metadata,
+                        "metadata": json.dumps(node.metadata) if node.metadata else None,
                     },
                 )
 

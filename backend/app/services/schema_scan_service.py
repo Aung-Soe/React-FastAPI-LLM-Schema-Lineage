@@ -7,10 +7,6 @@ from datetime import datetime
 
 
 class SchemaScanService:
-    """
-    Orchestrates a full schema scan and persists lineage.
-    """
-
     def __init__(
         self,
         introspector: PostgresIntrospector,
@@ -20,31 +16,59 @@ class SchemaScanService:
         self.lineage_repo = lineage_repo
 
     def scan(self) -> Dict:
-        # to add scan id generation
         scan_id = self.lineage_repo.create_scan()
         started_at = datetime.utcnow()
+
         tables = self.introspector.list_tables()
         views = self.introspector.list_views()
 
         all_nodes: Dict[str, LineageNode] = {}
         all_edges: List[LineageEdge] = []
 
-        # Tables
+        # ---------- TABLES ----------
         for t in tables:
-            node = LineageNode(name=t["table_name"], type="table")
-            all_nodes[f"table:{node.name}"] = node
+            metadata = self.introspector.get_object_metadata(t["table_name"])
 
-        # Views + lineage
+            table_node = LineageNode(
+                name=t["table_name"],
+                type="table",
+                metadata=metadata,  # ✅ FIX
+            )
+            all_nodes[f"table:{table_node.name}"] = table_node
+
+            # Add column nodes
+            for col in metadata["columns"]:
+                col_node = LineageNode(
+                    name=f'{t["table_name"]}.{col["column_name"]}',
+                    type="column",
+                    metadata=col,  # ✅ FIX
+                )
+                all_nodes[f"column:{col_node.name}"] = col_node
+
+        # ---------- VIEWS ----------
         for v in views:
-            view_name = v["table_name"]
-            metadata = self.introspector.get_object_metadata(view_name)
+            view_metadata = self.introspector.get_object_metadata(v["table_name"])
 
-            view_node = LineageNode(name=view_name, type="view")
-            all_nodes[f"view:{view_name}"] = view_node
+            view_node = LineageNode(
+                name=v["table_name"],
+                type="view",
+                metadata=view_metadata,  # ✅ FIX
+            )
+            all_nodes[f"view:{view_node.name}"] = view_node
 
+            # View columns
+            for col in view_metadata["columns"]:
+                col_node = LineageNode(
+                    name=f'{v["table_name"]}.{col["column_name"]}',
+                    type="column",
+                    metadata=col,  # ✅ FIX
+                )
+                all_nodes[f"column:{col_node.name}"] = col_node
+
+            # Lineage edges
             builder = LineageBuilder(
-                view_name=view_name,
-                view_sql=metadata["definition"],
+                view_name=v["table_name"],
+                view_sql=view_metadata["definition"],
             )
 
             edges = builder.extract_lineage()
@@ -54,8 +78,12 @@ class SchemaScanService:
                 all_nodes[f"{edge.source.type}:{edge.source.name}"] = edge.source
                 all_nodes[f"{edge.target.type}:{edge.target.name}"] = edge.target
 
-        # 🔹 Persistence step (NEW)
-        node_id_map = self.lineage_repo.save_nodes(scan_id, list(all_nodes.values()))
+        # ---------- PERSIST ----------
+        node_id_map = self.lineage_repo.save_nodes(
+            scan_id,
+            list(all_nodes.values()),
+        )
+
         self.lineage_repo.save_edges(scan_id, all_edges, node_id_map)
 
         self.lineage_repo.complete_scan(

@@ -149,6 +149,10 @@ export default function LineageGraph({ lineage }) {
 
   function onNodeClick(_, node) {
     setFocusedNodeId(node.id);
+
+    if (onNodeSelect && node.data?.original) {
+    onNodeSelect(node.data.original);
+    }
   }
 
   function onPaneClick() {
