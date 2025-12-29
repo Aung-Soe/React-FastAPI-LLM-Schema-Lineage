@@ -30,8 +30,8 @@ function buildGridLayout(nodes) {
 function nodeColor(type, dimmed) {
   if (dimmed) return "#e5e7eb"; // gray
 
-  if (type === "table") return "#3b82f6"; // blue
-  if (type === "view") return "#facc15"; // yellow
+  if (type === "table") return "#95b9eeff"; // blue
+  if (type === "view") return "#cf816aff"; // yellow
 
   return "#9ca3af";
 }
