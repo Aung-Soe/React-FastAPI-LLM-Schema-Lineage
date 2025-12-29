@@ -1,23 +1,30 @@
 import { useEffect, useState } from "react";
-import LineageGraph from "@/components/Graph/LineageGraph";
+import LineageGraph from "../components/Graph/LineageGraph";
+import { transformLineageToGraph } from "../utils/lineageTransform";
 
-export default function App() {
-  const [lineage, setLineage] = useState(null);
+export default function Lineage() {
+  const [graph, setGraph] = useState({ nodes: [], edges: [] });
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/v1/lineage/latest")
-      .then((res) => res.json())
-      .then(setLineage)
-      .catch(console.error);
+    fetch(`${import.meta.env.VITE_API_URL}/api/v1/lineage/latest`)
+      .then(res => res.json())
+      .then(data => {
+        setGraph(transformLineageToGraph(data));
+      });
   }, []);
 
+  const handleNodeClick = (node) => {
+    console.log("Selected:", node.id);
+    // next step: focus graph + show columns
+  };
+
   return (
-    <div style={{ padding: 20 }}>
-      <h1>Schema Lineage UI</h1>
-
-      {!lineage && <p>Loading lineage…</p>}
-
-      {lineage && <LineageGraph lineage={lineage} />}
+    <div style={{ height: "100vh" }}>
+      <LineageGraph
+        nodes={graph.nodes}
+        edges={graph.edges}
+        onNodeClick={handleNodeClick}
+      />
     </div>
   );
 }
