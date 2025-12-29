@@ -1,30 +1,27 @@
 import { useEffect, useState } from "react";
 import LineageGraph from "../components/Graph/LineageGraph";
-import { transformLineageToGraph } from "../utils/lineageTransform";
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default function Lineage() {
-  const [graph, setGraph] = useState({ nodes: [], edges: [] });
+  const [lineage, setLineage] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/api/v1/lineage/latest`)
+    fetch(`${API_URL}/api/v1/lineage/latest`)
       .then(res => res.json())
       .then(data => {
-        setGraph(transformLineageToGraph(data));
-      });
+        console.log("LINEAGE FROM BACKEND:", data);
+        setLineage(data);
+      })
+      .catch(err => {
+        console.error("FAILED TO FETCH LINEAGE", err);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  const handleNodeClick = (node) => {
-    console.log("Selected:", node.id);
-    // next step: focus graph + show columns
-  };
+  if (loading) return <div>Loading lineage...</div>;
+  if (!lineage) return <div>No lineage data</div>;
 
-  return (
-    <div style={{ height: "100vh" }}>
-      <LineageGraph
-        nodes={graph.nodes}
-        edges={graph.edges}
-        onNodeClick={handleNodeClick}
-      />
-    </div>
-  );
+  return <LineageGraph lineage={lineage} />;
 }
