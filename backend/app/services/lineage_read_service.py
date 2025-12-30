@@ -6,17 +6,17 @@ class LineageReadService:
     def __init__(self, repo: LineageRepository):
         self.repo = repo
 
-    def get_latest_lineage(self) -> Dict:
-        scan_id = self.repo.get_latest_completed_scan_id()
-
+    def get_latest_lineage(self, version: str) -> Dict:
+        scan_id = self.repo.get_latest_completed_scan_id(version)
+        
         if not scan_id:
             raise HTTPException(
                 status_code=404,
                 detail="No completed schema scan found",
             )
 
-        nodes = self.repo.get_nodes_for_scan(scan_id)
-        edges = self.repo.get_edges_for_scan(scan_id)
+        nodes = self.repo.get_nodes_for_scan(version)
+        edges = self.repo.get_edges_for_scan(version)
 
         return {
             "scan_id": str(scan_id),

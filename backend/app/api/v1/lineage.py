@@ -18,14 +18,16 @@ def get_lineage_repo():
 def get_introspector():
     return PostgresIntrospector()
 
-@router.get("/latest")
-def get_latest_lineage(
+@router.get("/{version}")
+def get_latest_lineage(version: str,
     repo: LineageRepository = Depends(get_lineage_repo),
-):
+    ):
+    if version not in {"latest", "L2", "L1"}:
+        raise HTTPException(status_code=400, detail="Invalid version")
     service = LineageReadService(repo)
-    return service.get_latest_lineage()
+    return service.get_latest_lineage(version)
 
-@router.get("/{view_name}")
+@router.get("/view/{view_name}")
 def get_lineage(
     view_name: str,
     introspector: PostgresIntrospector = Depends(get_introspector),
