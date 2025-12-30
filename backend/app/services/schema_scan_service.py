@@ -47,6 +47,7 @@ class SchemaScanService:
                         "data_type": col["data_type"],
                         "nullable": col["is_nullable"],
                         "position": col["ordinal_position"],
+                        "table": t["table_name"],
                     },
                 )
 
@@ -71,6 +72,29 @@ class SchemaScanService:
                 metadata=metadata,
             )
             all_nodes[f"view:{view_name}"] = view_node
+
+            columns = self.introspector.list_columns(view_name)
+
+            for c in columns:
+                col_node = LineageNode(
+                    name=f"{view_name}.{c['column_name']}",
+                    type="column",
+                    metadata={
+                        "data_type": c["data_type"],
+                        "is_nullable": c["is_nullable"],
+                        "ordinal_position": c["ordinal_position"],
+                        "view": view_name,
+                    },
+                )
+                all_nodes[f"column:{col_node.name}"] = col_node
+
+                all_edges.append(
+                    LineageEdge(
+                        source=col_node,
+                        target=view_node,
+                        relation="belongs_to",
+                    )
+                )
 
             builder = LineageBuilder(
                 view_name=view_name,

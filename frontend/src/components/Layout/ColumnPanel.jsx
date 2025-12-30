@@ -37,7 +37,12 @@ export default function ColumnPanel({ lineage, selectedNode }) {
       ) : (
         <ul style={{ paddingLeft: 16 }}>
           {columns.map(col => (
-            <li key={col.name}>{col.name.split(".")[1]}</li>
+            <li key={col.name}>
+              {col.name.split(".")[1]}
+              <span style={{ color: "#6b7280", marginLeft: 8 }}>
+                ({col.metadata?.data_type})
+              </span>
+            </li>
           ))}
         </ul>
       )}

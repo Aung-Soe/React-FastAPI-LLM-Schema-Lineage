@@ -42,23 +42,33 @@ class PostgresIntrospector:
     
     def list_columns(
         self,
-        table_name: str,
+        object_name: str,
         schema: str = "public"
         ) -> List[Dict]:
+        """
+        Returns columns with data types for BOTH tables and views.
+        """
+
         sql = """
         SELECT
-            column_name,
-            data_type,
-            is_nullable,
-            ordinal_position
-        FROM information_schema.columns
-        WHERE table_schema = :schema
-          AND table_name = :table_name
-        ORDER BY ordinal_position;
+            a.attname AS column_name,
+            pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
+            NOT a.attnotnull AS is_nullable,
+            a.attnum AS ordinal_position
+        FROM pg_attribute a
+        JOIN pg_class c ON a.attrelid = c.oid
+        JOIN pg_namespace n ON c.relnamespace = n.oid
+        WHERE
+            c.relname = :object_name
+            AND n.nspname = :schema
+            AND a.attnum > 0
+            AND NOT a.attisdropped
+        ORDER BY a.attnum;
         """
+
         return self._query(sql, {
+            "object_name": object_name,
             "schema": schema,
-            "table_name": table_name
         })
     
     def get_object_metadata(
