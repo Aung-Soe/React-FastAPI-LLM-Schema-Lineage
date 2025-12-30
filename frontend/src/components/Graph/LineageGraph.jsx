@@ -38,7 +38,8 @@ function nodeColor(type, dimmed) {
 
 /* ---------- component ---------- */
 
-export default function LineageGraph({ lineage }) {
+export default function LineageGraph({ lineage, onNodeSelect }) {
+
   const [focusedNodeId, setFocusedNodeId] = useState(null);
 
   /* ---------- base nodes ---------- */
@@ -53,7 +54,11 @@ export default function LineageGraph({ lineage }) {
     return buildGridLayout(
       tableViewNodes.map((n) => ({
         id: `${n.type}:${n.name}`,
-        data: { label: n.name, type: n.type },
+        data: {
+          label: n.name,
+          type: n.type,
+          original: n, // 👈 CRITICAL
+        },
         type: "default",
       }))
     );
@@ -150,8 +155,8 @@ export default function LineageGraph({ lineage }) {
   function onNodeClick(_, node) {
     setFocusedNodeId(node.id);
 
-    if (onNodeSelect && node.data?.original) {
-    onNodeSelect(node.data.original);
+    if (typeof onNodeSelect === "function") {
+      onNodeSelect(node.data.original);
     }
   }
 

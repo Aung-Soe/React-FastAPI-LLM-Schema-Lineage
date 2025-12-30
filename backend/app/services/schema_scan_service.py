@@ -37,6 +37,29 @@ class SchemaScanService:
             )
             all_nodes[f"table:{node.name}"] = node
 
+            columns = self.introspector.list_columns(t["table_name"])
+
+            for col in columns:
+                col_node = LineageNode(
+                    name=f"{t['table_name']}.{col['column_name']}",
+                    type="column",
+                    metadata={
+                        "data_type": col["data_type"],
+                        "nullable": col["is_nullable"],
+                        "position": col["ordinal_position"],
+                    },
+                )
+
+                all_nodes[f"column:{col_node.name}"] = col_node
+
+                all_edges.append(
+                    LineageEdge(
+                        source=col_node,
+                        target=node,
+                        relation="belongs_to",
+                    )
+                )
+
         # Views
         for v in views:
             view_name = v["table_name"]
