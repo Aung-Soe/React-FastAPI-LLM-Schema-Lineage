@@ -100,6 +100,29 @@ class PostgresIntrospector:
             }
 
         raise ValueError(f"Object not found: {schema}.{object_name}")
+    
+    def get_column_metadata(
+        self,
+        table_name: str,
+        column_name: str,
+        schema: str = "public",
+        ) -> Dict | None:
+        sql = """
+        SELECT
+            data_type,
+            is_nullable,
+            ordinal_position
+        FROM information_schema.columns
+        WHERE table_schema = :schema
+        AND table_name = :table_name
+        AND column_name = :column_name
+        """
+        rows = self._query(sql, {
+            "schema": schema,
+            "table_name": table_name,
+            "column_name": column_name,
+        })
+        return rows[0] if rows else None
 
 
 

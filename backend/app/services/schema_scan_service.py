@@ -105,8 +105,32 @@ class SchemaScanService:
             all_edges.extend(edges)
 
             for edge in edges:
-                all_nodes[f"{edge.source.type}:{edge.source.name}"] = edge.source
-                all_nodes[f"{edge.target.type}:{edge.target.name}"] = edge.target
+                #all_nodes[f"{edge.source.type}:{edge.source.name}"] = edge.source
+                #all_nodes[f"{edge.target.type}:{edge.target.name}"] = edge.target
+                for node in [edge.source, edge.target]:
+                    if node.type == "column" and node.metadata is None:
+                        # Expect format: table.column
+                        if "." in node.name:
+                            table, column = node.name.split(".", 1)
+
+                            meta = self.introspector.get_column_metadata(
+                                table_name=table,
+                                column_name=column,
+                            )
+
+                            if meta:
+                                node = LineageNode(
+                                    name=node.name,
+                                    type="column",
+                                    metadata={
+                                        "data_type": meta["data_type"],
+                                        "is_nullable": meta["is_nullable"],
+                                        "ordinal_position": meta["ordinal_position"],
+                                        "table": table,
+                                    },
+                                )
+
+                    all_nodes[f"{node.type}:{node.name}"] = node
 
         node_id_map = self.lineage_repo.save_nodes(
             scan_id, list(all_nodes.values()), version="latest"
