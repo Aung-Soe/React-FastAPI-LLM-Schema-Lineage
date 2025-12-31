@@ -9,55 +9,40 @@ export default function Lineage() {
   const [lineage, setLineage] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
   const [version, setVersion] = useState("latest");
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-
-    setLoading(true);
-    setSelectedNode(null); // 🔥 CRITICAL RESET
+    setSelectedNode(null); // 👈 reset selection on version change
 
     fetch(`${API_URL}/api/v1/lineage/${version}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled) setLineage(data);
-      })
-      .catch(console.error)
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
+      .then(res => res.json())
+      .then(setLineage)
+      .catch(console.error);
   }, [version]);
 
-  if (loading || !lineage) {
+  if (!lineage) {
     return <div style={{ padding: 20 }}>Loading lineage...</div>;
   }
 
   return (
     <div style={{ display: "flex", height: "100vh" }}>
-      {/* Left panel */}
-      <LeftPanel
-        version={version}
-        onVersionChange={setVersion}
-      />
+      {/* Left Panel */}
+      <LeftPanel version={version} onVersionChange={setVersion} />
 
       {/* Graph */}
       <div style={{ flex: 1 }}>
         <LineageGraph
-          key={version}              // 🔥 FORCE REMOUNT
           lineage={lineage}
           onNodeSelect={setSelectedNode}
         />
       </div>
 
-      {/* Right panel */}
-      <ColumnPanel
-        lineage={lineage}
-        selectedNode={selectedNode}
-      />
+      {/* Column Panel (ONLY show when node selected) */}
+      {selectedNode && (
+        <ColumnPanel
+          lineage={lineage}
+          selectedNode={selectedNode}
+        />
+      )}
     </div>
   );
 }
