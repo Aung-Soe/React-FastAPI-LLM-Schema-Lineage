@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import LineageGraph from "../components/Graph/LineageGraph";
 import ColumnPanel from "../components/Layout/ColumnPanel";
 import LeftPanel from "../components/Layout/LeftPanel";
+import TopBar from "../components/Layout/TopBar";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -24,25 +25,28 @@ export default function Lineage() {
   }
 
   return (
-    <div style={{ display: "flex", height: "100vh" }}>
-      {/* Left Panel */}
-      <LeftPanel version={version} onVersionChange={setVersion} />
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      <TopBar />
+      <div style={{ flex: 1, display: "flex" }}>
+        {/* Left Panel */}
+        <LeftPanel version={version} onVersionChange={setVersion} />
 
-      {/* Graph */}
-      <div style={{ flex: 1 }}>
-        <LineageGraph
-          lineage={lineage}
-          onNodeSelect={setSelectedNode}
-        />
+        {/* Graph */}
+        <div style={{ flex: 1 }}>
+          <LineageGraph
+            lineage={lineage}
+            onNodeSelect={setSelectedNode}
+          />
+        </div>
+
+        {/* Column Panel (ONLY show when node selected) */}
+        {selectedNode && (
+          <ColumnPanel
+            lineage={lineage}
+            selectedNode={selectedNode}
+          />
+        )}
       </div>
-
-      {/* Column Panel (ONLY show when node selected) */}
-      {selectedNode && (
-        <ColumnPanel
-          lineage={lineage}
-          selectedNode={selectedNode}
-        />
-      )}
     </div>
   );
 }
