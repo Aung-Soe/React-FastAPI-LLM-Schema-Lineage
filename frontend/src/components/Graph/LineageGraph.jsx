@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import ReactFlow, {
   Background,
   Controls,
   MiniMap,
+  useReactFlow,
 } from "reactflow";
 import "reactflow/dist/style.css";
 
@@ -10,7 +11,7 @@ import "reactflow/dist/style.css";
 
 const HEX_RADIUS = 90;
 const VIEW_OFFSET_X = 600;
-const VIEW_RING_RADIUS = 300;
+const VIEW_RING_RADIUS = 320;
 
 /* ---------- hex helpers ---------- */
 
@@ -29,16 +30,12 @@ function generateHexPositions(count) {
     let q = layer;
     let r = -layer;
 
-    const directions = [
-      [-1, 1],
-      [-1, 0],
-      [0, -1],
-      [1, -1],
-      [1, 0],
-      [0, 1],
+    const dirs = [
+      [-1, 1], [-1, 0], [0, -1],
+      [1, -1], [1, 0], [0, 1],
     ];
 
-    for (const [dq, dr] of directions) {
+    for (const [dq, dr] of dirs) {
       for (let i = 0; i < layer; i++) {
         if (results.length >= count) break;
         results.push({ q, r });
@@ -65,95 +62,76 @@ function nodeColor(type, dimmed) {
 
 export default function LineageGraph({ lineage, onNodeSelect }) {
   const [focusedNodeId, setFocusedNodeId] = useState(null);
+  const { fitView, setCenter } = useReactFlow();
 
   /* ---------- base nodes ---------- */
 
   const baseNodes = useMemo(() => {
-    if (!lineage?.nodes) return [];
-
     const tables = lineage.nodes.filter(n => n.type === "table");
     const views = lineage.nodes.filter(n => n.type === "view");
 
-    const hexPositions = generateHexPositions(tables.length);
+    const hex = generateHexPositions(tables.length);
 
     const tableNodes = tables.map((n, i) => {
-      const { x, y } = hexToPixel(hexPositions[i].q, hexPositions[i].r);
+      const { x, y } = hexToPixel(hex[i].q, hex[i].r);
       return {
         id: `table:${n.name}`,
         position: { x, y },
-        data: {
-          label: n.name,
-          type: "table",
-          original: n,
-        },
-        type: "default",
+        data: { label: n.name, type: "table", original: n },
       };
     });
 
     const viewNodes = views.map((n, i) => {
-      const angle = (2 * Math.PI * i) / Math.max(views.length, 1);
+      const angle = (2 * Math.PI * i) / views.length;
       return {
         id: `view:${n.name}`,
         position: {
           x: VIEW_OFFSET_X + Math.cos(angle) * VIEW_RING_RADIUS,
           y: Math.sin(angle) * VIEW_RING_RADIUS,
         },
-        data: {
-          label: n.name,
-          type: "view",
-          original: n,
-        },
-        type: "default",
+        data: { label: n.name, type: "view", original: n },
       };
     });
 
     return [...tableNodes, ...viewNodes];
   }, [lineage]);
 
-  /* ---------- base edges ---------- */
+  /* ---------- edges ---------- */
 
-  const baseEdges = useMemo(() => {
-    if (!lineage?.edges) return [];
-
-    return lineage.edges
-      .filter(
-        e =>
-          (e.source.type === "table" || e.source.type === "view") &&
-          (e.target.type === "table" || e.target.type === "view")
-      )
-      .map((e, i) => ({
-        id: `e-${i}`,
-        source: `${e.source.type}:${e.source.name}`,
-        target: `${e.target.type}:${e.target.name}`,
-        style: {
-          strokeDasharray: "4 4",
-          strokeWidth: 2,
-          stroke: i % 2 ? "#6366f1" : "#ec4899",
-        },
-      }));
+  const edges = useMemo(() => {
+    return lineage.edges.map((e, i) => ({
+      id: `e-${i}`,
+      source: `${e.source.type}:${e.source.name}`,
+      target: `${e.target.type}:${e.target.name}`,
+      style: {
+        strokeDasharray: "4 4",
+        strokeWidth: 2,
+        stroke: "#6366f1",
+      },
+    }));
   }, [lineage]);
 
-  /* ---------- connected nodes (CRITICAL FIX) ---------- */
+  /* ---------- connected nodes ---------- */
 
   const connectedNodeIds = useMemo(() => {
     if (!focusedNodeId) return new Set();
 
     const ids = new Set([focusedNodeId]);
-
-    baseEdges.forEach(e => {
+    edges.forEach(e => {
       if (e.source === focusedNodeId) ids.add(e.target);
       if (e.target === focusedNodeId) ids.add(e.source);
     });
-
     return ids;
-  }, [focusedNodeId, baseEdges]);
+  }, [focusedNodeId, edges]);
 
-  /* ---------- render nodes ---------- */
+  /* ---------- styled nodes ---------- */
 
   const nodes = useMemo(() => {
     return baseNodes.map(node => {
       const dimmed =
         focusedNodeId && !connectedNodeIds.has(node.id);
+
+      const focused = node.id === focusedNodeId;
 
       return {
         ...node,
@@ -162,66 +140,63 @@ export default function LineageGraph({ lineage, onNodeSelect }) {
           borderRadius: 10,
           padding: 12,
           fontWeight: 600,
-          opacity: dimmed ? 0.3 : 1,
-          border:
-            node.id === focusedNodeId
-              ? "3px solid #111827"
-              : "1px solid #9ca3af",
+          opacity: dimmed ? 0.25 : 1,
+          border: focused
+            ? "2px solid #2563eb"
+            : "1px solid #9ca3af",
+          boxShadow: focused
+            ? "0 0 14px rgba(37,99,235,0.6)"
+            : "none",
           cursor: "pointer",
         },
       };
     });
   }, [baseNodes, focusedNodeId, connectedNodeIds]);
 
-  /* ---------- render edges ---------- */
+  /* ---------- zoom-to-node ---------- */
 
-  const edges = useMemo(() => {
-    return baseEdges.map(e => {
-      const dimmed =
-        focusedNodeId &&
-        !(e.source === focusedNodeId || e.target === focusedNodeId);
+  useEffect(() => {
+    if (!focusedNodeId) return;
 
-      return {
-        ...e,
-        style: {
-          ...e.style,
-          opacity: dimmed ? 0.2 : 1,
-        },
-      };
-    });
-  }, [baseEdges, focusedNodeId]);
+    const node = nodes.find(n => n.id === focusedNodeId);
+    if (node) {
+      setCenter(node.position.x, node.position.y, {
+        zoom: 1.4,
+        duration: 600,
+      });
+    }
+  }, [focusedNodeId, nodes, setCenter]);
 
   /* ---------- events ---------- */
 
   function onNodeClick(_, node) {
     setFocusedNodeId(node.id);
-    onNodeSelect?.(node?.data?.original ?? null);
+    onNodeSelect?.(node.data.original);
   }
 
   function onPaneClick() {
     setFocusedNodeId(null);
     onNodeSelect?.(null);
+    fitView({ padding: 0.2, duration: 400 });
   }
 
   /* ---------- render ---------- */
 
   return (
-    <div style={{ height: "100%", width: "100%" }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        fitView
-        onNodeClick={onNodeClick}
-        onPaneClick={onPaneClick}
-      >
-        <Background gap={18} />
-        <Controls />
-        <MiniMap
-          nodeColor={n =>
-            n.data?.type === "table" ? "#93c5fd" : "#fde68a"
-          }
-        />
-      </ReactFlow>
-    </div>
+    <ReactFlow
+      nodes={nodes}
+      edges={edges}
+      fitView
+      onNodeClick={onNodeClick}
+      onPaneClick={onPaneClick}
+    >
+      <Background gap={18} />
+      <Controls />
+      <MiniMap
+        nodeColor={n =>
+          n.data.type === "table" ? "#93c5fd" : "#fde68a"
+        }
+      />
+    </ReactFlow>
   );
 }

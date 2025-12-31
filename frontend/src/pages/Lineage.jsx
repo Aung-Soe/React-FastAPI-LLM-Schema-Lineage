@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ReactFlowProvider } from "reactflow";
 import LineageGraph from "../components/Graph/LineageGraph";
 import ColumnPanel from "../components/Layout/ColumnPanel";
 import LeftPanel from "../components/Layout/LeftPanel";
@@ -33,12 +34,13 @@ export default function Lineage() {
 
         {/* Graph */}
         <div style={{ flex: 1 }}>
-          <LineageGraph
-            lineage={lineage}
-            onNodeSelect={setSelectedNode}
-          />
+          <ReactFlowProvider>
+            <LineageGraph
+              lineage={lineage}
+              onNodeSelect={setSelectedNode}
+            />
+          </ReactFlowProvider>
         </div>
-
         {/* Column Panel (ONLY show when node selected) */}
         {selectedNode && (
           <ColumnPanel
