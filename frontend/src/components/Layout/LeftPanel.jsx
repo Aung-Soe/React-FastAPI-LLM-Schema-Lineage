@@ -1,43 +1,48 @@
-export default function LeftPanel({ version, onVersionChange }) {
+export default function LeftPanel({
+  selectedVersion,
+  onVersionChange,
+}) {
   return (
     <div
       style={{
         width: 260,
+        padding: "16px",
         borderRight: "1px solid #e5e7eb",
+        background: "#f9fafb",
         display: "flex",
         flexDirection: "column",
-        padding: 12,
+        gap: 12,
       }}
     >
-      {/* Top section */}
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ fontWeight: 600 }}>Lineage version</label>
-        <select
-          value={version}
-          onChange={(e) => onVersionChange(e.target.value)}
-          style={{
-            width: "100%",
-            marginTop: 8,
-            padding: 6,
-          }}
-        >
-          <option value="latest">Latest</option>
-          <option value="L2">L2</option>
-          <option value="L1">L1</option>
-        </select>
+      <div style={{ fontWeight: 700, fontSize: 14 }}>
+        Lineage Version
       </div>
 
-      {/* Chat placeholder */}
-      <div
+      <select
+        value={selectedVersion}
+        onChange={(e) => onVersionChange(e.target.value)}
         style={{
-          flex: 1,
-          borderTop: "1px solid #e5e7eb",
-          paddingTop: 12,
-          color: "#6b7280",
+          padding: "8px 10px",
+          borderRadius: 8,
+          border: "1px solid #d1d5db",
+          background: "white",
           fontSize: 14,
+          cursor: "pointer",
         }}
       >
-        💬 Chat assistant (coming soon)
+        <option value="latest">Latest</option>
+        <option value="L2">L2</option>
+        <option value="L1">L1</option>
+      </select>
+
+      <div
+        style={{
+          fontSize: 12,
+          color: "#6b7280",
+          marginTop: 8,
+        }}
+      >
+        Select which lineage snapshot to visualize.
       </div>
     </div>
   );

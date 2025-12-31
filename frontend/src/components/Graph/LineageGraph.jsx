@@ -1,38 +1,41 @@
 import { useMemo, useState } from "react";
-import ReactFlow, { Background, Controls, MiniMap } from "reactflow";
+import ReactFlow, {
+  Background,
+  Controls,
+  MiniMap,
+} from "reactflow";
 import "reactflow/dist/style.css";
 
 /* ---------- layout constants ---------- */
 
-const HEX_RADIUS = 90;       // distance between hex centers
-const VIEW_OFFSET_X = 600;  // push views to the right
+const HEX_RADIUS = 90;
+const VIEW_OFFSET_X = 600;
 const VIEW_RING_RADIUS = 300;
 
 /* ---------- hex helpers ---------- */
 
-// axial hex → pixel
 function hexToPixel(q, r) {
-  const x = HEX_RADIUS * (Math.sqrt(3) * q + (Math.sqrt(3) / 2) * r);
-  const y = HEX_RADIUS * (1.5 * r);
-  return { x, y };
+  return {
+    x: HEX_RADIUS * (Math.sqrt(3) * q + (Math.sqrt(3) / 2) * r),
+    y: HEX_RADIUS * (1.5 * r),
+  };
 }
 
-// generate hex spiral positions
 function generateHexPositions(count) {
-  const results = [];
-  let q = 0;
-  let r = 0;
+  const results = [{ q: 0, r: 0 }];
   let layer = 1;
 
-  results.push({ q: 0, r: 0 });
-
   while (results.length < count) {
-    q = layer;
-    r = -layer;
+    let q = layer;
+    let r = -layer;
 
     const directions = [
-      [-1, 1], [-1, 0], [0, -1],
-      [1, -1], [1, 0], [0, 1],
+      [-1, 1],
+      [-1, 0],
+      [0, -1],
+      [1, -1],
+      [1, 0],
+      [0, 1],
     ];
 
     for (const [dq, dr] of directions) {
@@ -43,21 +46,18 @@ function generateHexPositions(count) {
         r += dr;
       }
     }
-
     layer++;
   }
 
   return results;
 }
 
-/* ---------- coloring ---------- */
+/* ---------- colors ---------- */
 
 function nodeColor(type, dimmed) {
   if (dimmed) return "#e5e7eb";
-
-  if (type === "table") return "#c7ddf8"; // light blue
-  if (type === "view") return "#fde68a";  // light yellow
-
+  if (type === "table") return "#c7ddf8";
+  if (type === "view") return "#fde68a";
   return "#d1d5db";
 }
 
@@ -74,12 +74,10 @@ export default function LineageGraph({ lineage, onNodeSelect }) {
     const tables = lineage.nodes.filter(n => n.type === "table");
     const views = lineage.nodes.filter(n => n.type === "view");
 
-    /* ----- tables: hex cluster ----- */
     const hexPositions = generateHexPositions(tables.length);
 
     const tableNodes = tables.map((n, i) => {
       const { x, y } = hexToPixel(hexPositions[i].q, hexPositions[i].r);
-
       return {
         id: `table:${n.name}`,
         position: { x, y },
@@ -92,15 +90,14 @@ export default function LineageGraph({ lineage, onNodeSelect }) {
       };
     });
 
-    /* ----- views: outer ring (right biased) ----- */
     const viewNodes = views.map((n, i) => {
-      const angle = (2 * Math.PI * i) / views.length;
-      const x = VIEW_OFFSET_X + Math.cos(angle) * VIEW_RING_RADIUS;
-      const y = Math.sin(angle) * VIEW_RING_RADIUS;
-
+      const angle = (2 * Math.PI * i) / Math.max(views.length, 1);
       return {
         id: `view:${n.name}`,
-        position: { x, y },
+        position: {
+          x: VIEW_OFFSET_X + Math.cos(angle) * VIEW_RING_RADIUS,
+          y: Math.sin(angle) * VIEW_RING_RADIUS,
+        },
         data: {
           label: n.name,
           type: "view",
@@ -113,7 +110,7 @@ export default function LineageGraph({ lineage, onNodeSelect }) {
     return [...tableNodes, ...viewNodes];
   }, [lineage]);
 
-  /* ---------- edges ---------- */
+  /* ---------- base edges ---------- */
 
   const baseEdges = useMemo(() => {
     if (!lineage?.edges) return [];
@@ -136,16 +133,18 @@ export default function LineageGraph({ lineage, onNodeSelect }) {
       }));
   }, [lineage]);
 
-  /* ---------- focus logic ---------- */
+  /* ---------- connected nodes (CRITICAL FIX) ---------- */
 
   const connectedNodeIds = useMemo(() => {
     if (!focusedNodeId) return new Set();
 
     const ids = new Set([focusedNodeId]);
+
     baseEdges.forEach(e => {
       if (e.source === focusedNodeId) ids.add(e.target);
       if (e.target === focusedNodeId) ids.add(e.source);
     });
+
     return ids;
   }, [focusedNodeId, baseEdges]);
 
@@ -177,28 +176,31 @@ export default function LineageGraph({ lineage, onNodeSelect }) {
   /* ---------- render edges ---------- */
 
   const edges = useMemo(() => {
-    return baseEdges.map(e => ({
-      ...e,
-      style: {
-        ...e.style,
-        opacity:
-          focusedNodeId &&
-          !(e.source === focusedNodeId || e.target === focusedNodeId)
-            ? 0.2
-            : 1,
-      },
-    }));
+    return baseEdges.map(e => {
+      const dimmed =
+        focusedNodeId &&
+        !(e.source === focusedNodeId || e.target === focusedNodeId);
+
+      return {
+        ...e,
+        style: {
+          ...e.style,
+          opacity: dimmed ? 0.2 : 1,
+        },
+      };
+    });
   }, [baseEdges, focusedNodeId]);
 
   /* ---------- events ---------- */
 
   function onNodeClick(_, node) {
     setFocusedNodeId(node.id);
-    if (onNodeSelect) onNodeSelect(node.data.original);
+    onNodeSelect?.(node?.data?.original ?? null);
   }
 
   function onPaneClick() {
     setFocusedNodeId(null);
+    onNodeSelect?.(null);
   }
 
   /* ---------- render ---------- */
@@ -216,7 +218,7 @@ export default function LineageGraph({ lineage, onNodeSelect }) {
         <Controls />
         <MiniMap
           nodeColor={n =>
-            n.data.type === "table" ? "#93c5fd" : "#fde68a"
+            n.data?.type === "table" ? "#93c5fd" : "#fde68a"
           }
         />
       </ReactFlow>
