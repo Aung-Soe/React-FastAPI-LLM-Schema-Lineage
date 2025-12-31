@@ -6,60 +6,84 @@ import LeftPanel from "../components/Layout/LeftPanel";
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function Lineage() {
+  const [version, setVersion] = useState("latest");
   const [lineage, setLineage] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
-  const [version, setVersion] = useState("latest");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    setLoading(true);
-    setLineage(null);
+    let cancelled = false;
 
-    fetch(`${API_URL}/api/v1/lineage/${version}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setLineage(data);
-        setSelectedNode(null); // reset selection on version switch
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    async function loadLineage() {
+      setLoading(true);
+      setError(null);
+      setSelectedNode(null);
+
+      try {
+        const res = await fetch(
+          `${API_URL}/api/v1/lineage/${version}`
+        );
+
+        const data = await res.json();
+
+        if (!res.ok || data?.detail) {
+          throw new Error(data?.detail || "Failed to load lineage");
+        }
+
+        if (!cancelled) {
+          setLineage(data);
+        }
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) {
+          setError(err.message);
+          setLineage(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadLineage();
+
+    return () => {
+      cancelled = true;
+    };
   }, [version]);
 
   return (
     <div style={{ display: "flex", height: "100vh" }}>
-      {/* Left side pane */}
+      {/* Left panel */}
       <LeftPanel
-        selectedVersion={version}
+        version={version}
         onVersionChange={setVersion}
       />
 
-      {/* Main graph area */}
+      {/* Main graph */}
       <div style={{ flex: 1, position: "relative" }}>
         {loading && (
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "rgba(255,255,255,0.7)",
-              zIndex: 10,
-            }}
-          >
-            Loading lineage…
+          <div style={{ padding: 20 }}>Loading lineage…</div>
+        )}
+
+        {error && (
+          <div style={{ padding: 20, color: "red" }}>
+            {error}
           </div>
         )}
 
-        {lineage && (
+        {!loading && lineage && (
           <LineageGraph
+            key={version}   // 👈 IMPORTANT FIX
             lineage={lineage}
             onNodeSelect={setSelectedNode}
           />
         )}
       </div>
 
-      {/* Right side column panel */}
+      {/* Right panel */}
       <ColumnPanel
         lineage={lineage}
         selectedNode={selectedNode}
