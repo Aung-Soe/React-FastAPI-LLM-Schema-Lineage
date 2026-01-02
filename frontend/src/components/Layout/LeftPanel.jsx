@@ -24,7 +24,9 @@ export default function LeftPanel({
 
       {/* Bottom 2/3 — Chat */}
       <div style={styles.chatArea}>
-        <ChatBox selectedNode={selectedNode} />
+        <ChatBox selectedNode={selectedNode} 
+        version={version}
+        />
       </div>
     </div>
   );

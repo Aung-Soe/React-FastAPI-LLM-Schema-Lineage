@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { sendChatMessage } from "../../api/chatApi";
 import { theme } from "../../theme";
 
-export default function ChatBox({ selectedNode }) {
+export default function ChatBox({ selectedNode, version }) {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -9,32 +10,51 @@ export default function ChatBox({ selectedNode }) {
     },
   ]);
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
 
   /* ---------- auto scroll ---------- */
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, loading]);
 
   /* ---------- submit ---------- */
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
 
-    const contextHint = selectedNode
-      ? ` (context: ${selectedNode.type} ${selectedNode.name})`
-      : "";
+    const userMessage = input;
+    setInput("");
 
     setMessages((prev) => [
       ...prev,
-      { role: "user", content: input },
-      {
-        role: "assistant",
-        content: `Understood${contextHint}. (LLM response placeholder)`,
-      },
+      { role: "user", content: userMessage },
     ]);
 
-    setInput("");
+    setLoading(true);
+
+    try {
+      const res = await sendChatMessage({
+        question: userMessage,
+        selectedNode,
+        version,
+      });
+
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: res.answer },
+      ]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "⚠️ Unable to get response from assistant.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -64,6 +84,13 @@ export default function ChatBox({ selectedNode }) {
             {m.content}
           </div>
         ))}
+
+        {loading && (
+          <div style={{ ...styles.message, ...styles.assistantMessage }}>
+            Thinking…
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
 
@@ -74,8 +101,11 @@ export default function ChatBox({ selectedNode }) {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about this schema…"
           style={styles.input}
+          disabled={loading}
         />
-        <button style={styles.button}>Send</button>
+        <button style={styles.button} disabled={loading}>
+          Send
+        </button>
       </form>
     </div>
   );
@@ -88,19 +118,18 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     height: "100%",
-    background: theme.colors.panel,
+    background: "rgba(255,255,255,0.75)",
     backdropFilter: "blur(12px)",
     borderRadius: 12,
     border: `1px solid ${theme.colors.border}`,
-    fontFamily: theme.typography.fontFamily,
     overflow: "hidden",
   },
 
   header: {
     padding: "10px 14px",
     fontWeight: 600,
-    fontSize: theme.typography.heading,
-    background: "linear-gradient(90deg, #f8fafc, #eef2ff)",
+    fontSize: 14,
+    background: "linear-gradient(90deg,#f8fafc,#eef2ff)",
     borderBottom: `1px solid ${theme.colors.border}`,
     display: "flex",
     justifyContent: "space-between",
@@ -117,17 +146,17 @@ const styles = {
 
   messages: {
     flex: 1,
-    padding: theme.spacing.md,
+    padding: 12,
     overflowY: "auto",
     display: "flex",
     flexDirection: "column",
-    gap: theme.spacing.sm,
+    gap: 8,
   },
 
   message: {
     padding: "8px 12px",
     borderRadius: 10,
-    fontSize: theme.typography.body,
+    fontSize: 13,
     lineHeight: 1.4,
     maxWidth: "90%",
   },
@@ -141,13 +170,13 @@ const styles = {
   assistantMessage: {
     alignSelf: "flex-start",
     background: "#f1f5f9",
-    color: theme.colors.text,
+    color: "#111827",
   },
 
   inputBar: {
     display: "flex",
-    gap: theme.spacing.sm,
-    padding: theme.spacing.sm,
+    gap: 8,
+    padding: 10,
     borderTop: `1px solid ${theme.colors.border}`,
     background: "#ffffffcc",
   },
@@ -156,9 +185,9 @@ const styles = {
     flex: 1,
     padding: "8px 12px",
     borderRadius: 8,
-    border: "1px solid #d1d5db",
+    border: `1px solid ${theme.colors.border}`,
     outline: "none",
-    fontSize: theme.typography.body,
+    fontSize: 13,
   },
 
   button: {
@@ -167,7 +196,7 @@ const styles = {
     border: "none",
     background: theme.colors.primary,
     color: "white",
-    fontSize: theme.typography.body,
+    fontSize: 13,
     fontWeight: 500,
     cursor: "pointer",
   },
