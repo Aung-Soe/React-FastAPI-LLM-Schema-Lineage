@@ -1,30 +1,22 @@
-from typing import List, Optional
 from pydantic import BaseModel
+from typing import List, Optional, Literal
 
-
-# ---------- message ----------
 
 class ChatMessage(BaseModel):
-    role: str  # "user" | "assistant" | "system"
+    role: Literal["user", "assistant"]
     content: str
 
 
-# ---------- context ----------
-
 class SelectedNode(BaseModel):
-    type: str  # "table" | "view"
+    type: str
     name: str
 
 
-# ---------- request ----------
-
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
-    lineage_version: str = "latest"
+    lineage_version: str
     selected_node: Optional[SelectedNode] = None
 
-
-# ---------- response ----------
 
 class ChatResponse(BaseModel):
     reply: str

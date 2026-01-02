@@ -3,6 +3,7 @@ import { sendChatMessage } from "../../api/chatApi";
 import { theme } from "../../theme";
 
 export default function ChatBox({ selectedNode, version }) {
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -21,39 +22,46 @@ export default function ChatBox({ selectedNode, version }) {
   /* ---------- submit ---------- */
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!input.trim() || loading) return;
+    if (!input.trim()) return;
 
-    const userMessage = input;
+    const userMessage = { role: "user", content: input };
+
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
 
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: userMessage },
-    ]);
-
-    setLoading(true);
-
     try {
-      const res = await sendChatMessage({
-        question: userMessage,
-        selectedNode,
-        version,
-      });
+      const res = await fetch(
+        `${API_URL}/api/v1/chat/query`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [...messages, userMessage],
+            lineage_version: "latest",
+            selected_node: selectedNode
+              ? {
+                  type: selectedNode.type,
+                  name: selectedNode.name,
+                }
+              : null,
+          }),
+        }
+      );
+
+      const data = await res.json();
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: res.answer },
+        { role: "assistant", content: data.reply },
       ]);
     } catch (err) {
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: "⚠️ Unable to get response from assistant.",
+          content: "⚠️ Backend unavailable",
         },
       ]);
-    } finally {
-      setLoading(false);
     }
   }
 
