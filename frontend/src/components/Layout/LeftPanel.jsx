@@ -1,14 +1,29 @@
-import { theme } from "../../theme";
 import ChatBox from "../Chat/ChatBox";
+import { theme } from "../../theme/theme";
+import { useMemo } from "react";
 
 export default function LeftPanel({
   version,
   onVersionChange,
   selectedNode,
+  chatActive,
+  setChatActive          // ✅ controlled from parent
 }) {
+
+  const dynamicStyles = useMemo(
+    () => ({
+      chatArea: {
+        flex: chatActive ? 1 : 0.66,
+        transition: "flex 250ms ease",
+        overflow: "hidden",
+      },
+    }),
+    [chatActive]
+  );
+
   return (
     <div style={styles.container}>
-      {/* Top 1/3 — Version Selector */}
+      {/* Top section */}
       <div style={styles.versionSelector}>
         <label style={styles.label}>Lineage Version</label>
         <select
@@ -22,41 +37,45 @@ export default function LeftPanel({
         </select>
       </div>
 
-      {/* Bottom 2/3 — Chat */}
-      <div style={styles.chatArea}>
-        <ChatBox selectedNode={selectedNode} 
-        version={version}
-        />
+      {/* Chat section */}
+      <div style={{
+          ...styles.chatArea,
+          flex: chatActive ? 1 : 2,
+        }}
+      >
+        <ChatBox selectedNode={selectedNode}
+          chatActive={chatActive}
+          setChatActive={setChatActive}
+          version={version}
+         />
       </div>
     </div>
   );
 }
 
-/* ✅ styles defined and theme-backed */
+/* ---------- static styles only ---------- */
+
 const styles = {
   container: {
     display: "flex",
     flexDirection: "column",
     height: "100%",
-    background: theme.colors.backgroundGlass,
+    background: "rgba(255, 255, 255, 0.7)",
     backdropFilter: "blur(12px)",
-    borderRadius: 12,
-    border: `1px solid ${theme.colors.panelBorder}`,
-    boxShadow: theme.shadows.panel,
-    overflow: "hidden",
-    fontFamily: theme.typography.fontFamily,
+    borderRight: "1px solid #e5e7eb",
+    fontFamily: theme.typography?.fontFamily || "Inter, system-ui, sans-serif"
   },
 
   versionSelector: {
     padding: theme.spacing.md,
-    borderBottom: `1px solid ${theme.colors.panelBorder}`,
-    background: theme.colors.primarySoft,
+    borderBottom: "1px solid #e5e7eb",
+    background: "linear-gradient(180deg, #f8fafc, #eef2ff)",
   },
 
   label: {
     fontSize: 12,
     fontWeight: 600,
-    color: theme.colors.textSecondary,
+    color: theme.colors.muted,
     marginBottom: 6,
     display: "block",
   },
@@ -65,13 +84,16 @@ const styles = {
     width: "100%",
     padding: "8px 10px",
     borderRadius: 8,
-    border: `1px solid ${theme.colors.panelBorder}`,
+    border: "1px solid #d1d5db",
     fontSize: 13,
     outline: "none",
+    background: "#fff",
   },
 
   chatArea: {
-    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    transition: "flex 250ms ease",
     overflow: "hidden",
   },
 };

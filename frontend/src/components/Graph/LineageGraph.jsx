@@ -178,6 +178,7 @@ export default function LineageGraph({ lineage, onNodeSelect }) {
     setFocusedNodeId(null);
     onNodeSelect?.(null);
     fitView({ padding: 0.2, duration: 400 });
+    onCanvasClick?.();
   }
 
   /* ---------- render ---------- */

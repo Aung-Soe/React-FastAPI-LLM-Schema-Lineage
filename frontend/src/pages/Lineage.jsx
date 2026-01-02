@@ -11,6 +11,9 @@ export default function Lineage() {
   const [lineage, setLineage] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
   const [version, setVersion] = useState("latest");
+  const [chatActive, setChatActive] = useState(false);
+  const [chatKey, setChatKey] = useState(0); // used to reset chat
+
 
   useEffect(() => {
     setSelectedNode(null); // 👈 reset selection on version change
@@ -21,6 +24,12 @@ export default function Lineage() {
       .catch(console.error);
   }, [version]);
 
+  function handleCanvasClick() {
+    setSelectedNode(null);
+    setChatActive(false);
+    setChatKey(k => k + 1); // force reset
+}
+
   if (!lineage) {
     return <div style={{ padding: 20 }}>Loading lineage...</div>;
   }
@@ -30,21 +39,29 @@ export default function Lineage() {
       <TopBar />
       <div style={{ flex: 1, display: "flex" }}>
         {/* Left Panel */}
-        <LeftPanel version={version} 
+        <LeftPanel 
+          version={version} 
           onVersionChange={setVersion} 
           selectedNode={selectedNode}
+          chatActive={chatActive}
+          setChatActive={setChatActive}
+          chatKey={chatKey}
         />
         {/* Graph */}
         <div style={{ flex: 1 }}>
           <ReactFlowProvider>
             <LineageGraph
               lineage={lineage}
-              onNodeSelect={setSelectedNode}
+              onNodeSelect={(node) => {
+                setSelectedNode(node);
+                setChatActive(false);
+              }}
+              onCanvasClick={handleCanvasClick}
             />
           </ReactFlowProvider>
         </div>
         {/* Column Panel (ONLY show when node selected) */}
-        {selectedNode && (
+        {!chatActive && selectedNode && (
           <ColumnPanel
             lineage={lineage}
             selectedNode={selectedNode}

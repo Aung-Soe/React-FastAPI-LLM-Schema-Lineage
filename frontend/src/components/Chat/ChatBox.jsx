@@ -1,15 +1,21 @@
 import { useEffect, useRef, useState } from "react";
-import { sendChatMessage } from "../../api/chatApi";
 import { theme } from "../../theme";
 
-export default function ChatBox({ selectedNode, version }) {
+export default function ChatBox({
+  selectedNode,
+  version,
+  chatActive,
+  setChatActive,
+}) {
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
   const [messages, setMessages] = useState([
     {
       role: "assistant",
       content: "Ask me about schema lineage, views, or relationships.",
     },
   ]);
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
@@ -19,34 +25,47 @@ export default function ChatBox({ selectedNode, version }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  /* ---------- reset when chat deactivates ---------- */
+  useEffect(() => {
+    if (!chatActive) {
+      setMessages([
+        {
+          role: "assistant",
+          content: "Ask me about schema lineage, views, or relationships.",
+        },
+      ]);
+      setInput("");
+      setLoading(false);
+    }
+  }, [chatActive]);
+
   /* ---------- submit ---------- */
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
+
+    setChatActive(true);
 
     const userMessage = { role: "user", content: input };
-
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    setLoading(true);
 
     try {
-      const res = await fetch(
-        `${API_URL}/api/v1/chat/query`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: [...messages, userMessage],
-            lineage_version: "latest",
-            selected_node: selectedNode
-              ? {
-                  type: selectedNode.type,
-                  name: selectedNode.name,
-                }
-              : null,
-          }),
-        }
-      );
+      const res = await fetch(`${API_URL}/api/v1/chat/query`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [...messages, userMessage],
+          lineage_version: version,
+          selected_node: selectedNode
+            ? {
+                type: selectedNode.type,
+                name: selectedNode.name,
+              }
+            : null,
+        }),
+      });
 
       const data = await res.json();
 
@@ -62,6 +81,8 @@ export default function ChatBox({ selectedNode, version }) {
           content: "⚠️ Backend unavailable",
         },
       ]);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -106,6 +127,7 @@ export default function ChatBox({ selectedNode, version }) {
       <form onSubmit={handleSubmit} style={styles.inputBar}>
         <input
           value={input}
+          onFocus={() => setChatActive(true)}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about this schema…"
           style={styles.input}
@@ -125,7 +147,7 @@ const styles = {
   container: {
     display: "flex",
     flexDirection: "column",
-    height: "100%",
+    height: "100%", // ✅ fills bottom 2/3 controlled by LeftPanel
     background: "rgba(255,255,255,0.75)",
     backdropFilter: "blur(12px)",
     borderRadius: 12,
