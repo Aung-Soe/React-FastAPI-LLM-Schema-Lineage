@@ -30,8 +30,10 @@ export default function Lineage() {
       <TopBar />
       <div style={{ flex: 1, display: "flex" }}>
         {/* Left Panel */}
-        <LeftPanel version={version} onVersionChange={setVersion} />
-
+        <LeftPanel version={version} 
+          onVersionChange={setVersion} 
+          selectedNode={selectedNode}
+        />
         {/* Graph */}
         <div style={{ flex: 1 }}>
           <ReactFlowProvider>

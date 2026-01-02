@@ -1,3 +1,11 @@
-export * from "./colors";
-export * from "./spacing";
-export * from "./shadows";
+import colors from "./colors";
+import spacing from "./spacing";
+import typography from "./typography";
+import shadows from "./shadows";
+
+export const theme = {
+  colors,
+  spacing,
+  typography,
+  shadows,
+};
