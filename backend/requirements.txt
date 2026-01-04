@@ -5,3 +5,4 @@ sqlalchemy
 psycopg2-binary
 sqlglot
 pydantic-settings
+httpx>=0.26.0
