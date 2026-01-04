@@ -1,9 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Literal
 
 
 class ChatMessage(BaseModel):
-    role: Literal["user", "assistant"]
+    role: Literal["user", "assistant", "system", "tool"]
     content: str
 
 
@@ -14,7 +14,7 @@ class SelectedNode(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
-    lineage_version: str
+    lineage_version: str = Field(..., example="latest")
     selected_node: Optional[SelectedNode] = None
 
 

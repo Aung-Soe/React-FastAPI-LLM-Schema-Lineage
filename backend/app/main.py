@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1 import health, metadata, lineage, scan, chat
 from app.core.config import settings
+from fastapi import Request
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -31,4 +32,11 @@ def create_app() -> FastAPI:
 
 app = create_app()
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    body = await request.body()
+    print("📥 RAW REQUEST BODY:", body.decode("utf-8"))
+
+    response = await call_next(request)
+    return response
 
